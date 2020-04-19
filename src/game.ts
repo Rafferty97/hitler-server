@@ -50,12 +50,13 @@ export class Game {
 
   /* Mutating methods */
 
-  addPlayer(name: string): string {
+  addPlayer(name: string) {
     if (this.numPlayers == 10) {
       throw new Error('Cannot have more than 10 players in game.');
     }
     const player = new Player(nanoid(), name);
     this.players.push(player);
+    this.signalChange('all');
     return player.id;
   }
 
@@ -313,9 +314,14 @@ export class Game {
   listeners: Map<number, GameListener> = new Map();
   listenerId: number = 0;
 
-  attachListener(listener: () => any, player: number | 'all'): () => void {
+  attachListener(listener: () => any, playerId: string): () => void {
     const id = this.listenerId++;
-    this.listeners.set(id, { listener, player });
+    if (playerId == 'board') {
+      this.listeners.set(id, { listener, player: 'all' });
+    } else {
+      const ind = this.players.findIndex(p => p.id == playerId);
+      this.listeners.set(id, { listener, player: ind });
+    }
     return () => this.listeners.delete(id);
   }
 
@@ -329,7 +335,11 @@ export class Game {
     return this.numFascistCards >= 5;
   }
 
-  getPlayerState(playerId: string) {
+  hasPlayerWithID(playerId: string): boolean {
+    return this.players.find(player => player.id == playerId) != undefined;
+  }
+
+  getPlayerState(playerId: string): PlayerState {
     const ind = this.getPlayer(playerId);
     const player = this.players[ind];
     let action: PlayerAction | undefined = undefined;
