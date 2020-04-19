@@ -84,7 +84,55 @@ export class PlayerSession {
           throw new Error('Invalid player chosen.');
         }
         break;
-      // TODO
+      case 'vote':
+        if (typeof data === 'boolean') {
+          this.game.vote(this.playerId, data);
+        } else {
+          throw new Error('Vote must be a boolean.');
+        }
+        break;
+      case 'legislative':
+        switch (data.type) {
+          case 'discard':
+            const idx = data.idx;
+            if (typeof idx === 'number' && idx >= 0 && idx < state.action.cards.length) {
+              this.game.discardPolicy(this.playerId, idx);
+            } else {
+              throw new Error('Discard index must be a valid integer.');
+            }
+            break;
+          case 'veto':
+            if (state.action.canVeto) {
+              this.game.vetoAgenda(this.playerId);
+            } else {
+              throw new Error('Veto is unavailable.');
+            }
+            break;
+          default:
+            throw new Error('Invalid action.');
+        }
+        break;
+      case 'vetoConsent':
+        if (typeof data === 'boolean') {
+          if (data) {
+            this.game.vetoAgenda(this.playerId);
+          } else {
+            this.game.rejectVeto(this.playerId);
+          }
+        } else {
+          throw new Error('Veto consent must be a boolean.');
+        }
+        break;
+      case 'policyPeak':
+      case 'investigateParty':
+        if (data === 'done') {
+          this.game.endExecutiveAction();
+        } else {
+          throw new Error('Unexpected data.');
+        }
+        break;
+      default:
+        throw new Error('Unexpected action.');
     }
   }
 
