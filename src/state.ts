@@ -61,36 +61,61 @@ interface EndGame {
 
 /* Player states */
 
-interface PublicPlayer {
+export interface PlayerState {
   id: string;
   name: string;
-  currLegislativeRole?: 'President' | 'Chancellor';
-  prevLegislativeRole?: 'President' | 'Chancellor';
+  role?: PlayerRole;
+  title: PlayerTitle;
+  action?: PlayerAction;
+  players: PublicPlayer[];
+}
+
+export type PlayerTitle = 'President' | 'Chancellor' | 'President Nominee' | 'Chancellor Nominee' | 'Dead' | '';
+
+export interface PublicPlayer {
+  id: string;
+  name: string;
   isDead: boolean;
   isConfirmedNotHitler: boolean;
 }
 
-type PlayerAction
-  = ChoosePlayerAction
+export type PlayerAction
+  = LobbyAction
+  | NightRoundAction
+  | ChoosePlayerAction
   | VoteAction
-  | LegislativeAction;
+  | LegislativeAction
+  | PolicyPeakAction
+  | InvestigatePartyAction
+  | VetoConsentAction
+  | GameOverAction;
+
+interface LobbyAction {
+  type: 'lobby';
+  canStart: boolean;
+}
+
+interface NightRoundAction {
+  type: 'nightRound';
+}
 
 interface ChoosePlayerAction {
   type: 'choosePlayer';
-  subtype: 'nominateChancellor' | 'investigate' | 'specialElection' | 'execute';
-  players: string[];
+  subtype: 'nominateChancellor' | 'investigate' | 'specialElection' | 'execution';
+  players: number[];
 }
 
 interface VoteAction {
   type: 'vote';
-  president: string;
-  chancellor: string;
+  president: number;
+  chancellor: number;
 }
 
 interface LegislativeAction {
   type: 'legislative';
   role: 'President' | 'Chancellor';
   cards: Party[];
+  canVeto: boolean;
 }
 
 interface PolicyPeakAction {
@@ -98,6 +123,19 @@ interface PolicyPeakAction {
   cards: Party[];
 }
 
+interface InvestigatePartyAction {
+  type: 'investigateParty';
+  player: number;
+  party: Party;
+}
+
 interface VetoConsentAction {
   type: 'vetoConsent';
+  chancellor: number;
+}
+
+interface GameOverAction {
+  type: 'gameover';
+  winner: Party;
+  winType: 'legislative' | 'hitler';
 }

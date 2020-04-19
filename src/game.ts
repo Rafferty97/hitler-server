@@ -1,5 +1,8 @@
 import { nanoid } from "nanoid";
-import { Party, PlayerRole, GameState, ExecutiveActionType } from "./state";
+import {
+  Party, PlayerRole, GameState, ExecutiveActionType,
+  PlayerState, PlayerAction, PublicPlayer, PlayerTitle
+} from "./state";
 import { getShuffledDeck, getFascistTile } from "./util";
 
 const MAX_LIBERAL_TILES = 5;
@@ -13,6 +16,7 @@ class Player {
   role?: PlayerRole = undefined;
   isDead: boolean = false;
   isConfirmedNotHitler: boolean = false;
+  hasBeenInvestigated: boolean = false;
 
   constructor(id: string, name: string) {
     this.id = id;
@@ -42,7 +46,7 @@ export class Game {
   drawPile: Party[] = [];
   lastPresident: number = -1;
   lastChancellor: number = -1;
-  nextPresidentElect: number = 0;
+  lastPresidentInTurn: number = -1;
 
   /* Mutating methods */
 
@@ -64,7 +68,7 @@ export class Game {
       confirmations: this.players.map(_ => false)
     };
     this.drawPile = getShuffledDeck();
-    this.nextPresidentElect = Math.floor(Math.random() * this.numPlayers);
+    this.lastPresidentInTurn = Math.floor(Math.random() * this.numPlayers);
   }
 
   clickNext(playerId: string) {
@@ -85,8 +89,9 @@ export class Game {
   choosePlayer(playerId: string, otherPlayerId: string) {
     const player = this.getPlayer(playerId);
     const otherPlayer = this.getPlayer(otherPlayerId);
+
     if (player == otherPlayer) {
-      throw new Error('Cannot choose self.');
+      throw new Error('Cannot choose yourself.');
     }
 
     switch (this.state.type) {
@@ -96,6 +101,16 @@ export class Game {
         }
         this.state.chancellorElect = otherPlayer;
         this.signalChange('all');
+        break;
+      case 'executiveAction':
+        if (this.state.action == 'policyPeak') {
+          throw new Error('This executive action doesn\'t involve another player.');
+        }
+        if (this.state.playerChosen) {
+          throw new Error('Player already chosen.');
+        }
+        this.state.playerChosen = otherPlayer;
+        this.signalChange(player);
         break;
     }
   }
@@ -154,7 +169,7 @@ export class Game {
     }
   }
 
-  discardCard(playerId: string, card: number) {
+  discardPolicy(playerId: string, card: number) {
     const player = this.getPlayer(playerId);
 
     if (this.state.type != 'legislativeSession') {
@@ -174,14 +189,15 @@ export class Game {
         if (this.state.chancellor != player) {
           throw new Error('It is the chancellor\'s turn to discard a policy.');
         }
-        const { chancellor } = this.state;
+        this.lastPresident = this.state.president;
+        this.lastChancellor = this.state.chancellor;
         this.state.cards.splice(card);
         this.state = {
           type: 'cardReveal',
           card: this.state.cards[0],
           chaos: false
         };
-        this.signalChange(chancellor);
+        this.signalChange(this.lastChancellor);
         break;
       case 'Veto':
         throw new Error('Chancellor has called for a veto.');
@@ -212,6 +228,8 @@ export class Game {
         if (this.state.president != player) {
           throw new Error('Only the president can conset to the veto.');
         }
+        this.lastPresident = this.state.president;
+        this.lastChancellor = this.state.chancellor;
         this.state = {
           type: 'cardReveal',
           card: 'Veto',
@@ -244,6 +262,11 @@ export class Game {
       throw new Error('Not in a card reveal.');
     }
 
+    if (this.state.chaos) {
+      this.lastPresident = -1;
+      this.lastChancellor = -1;
+    }
+
     if (this.state.card == 'Fascist') {
       if (this.numFascistCards == MAX_FASCIST_TILES) {
         this.state = {
@@ -254,6 +277,7 @@ export class Game {
         this.signalChange('all');
       } else {
         const tile = getFascistTile(this.numPlayers, this.numFascistCards - 1);
+        this.electionTracker = 0;
         this.playExecutiveAction(tile);
       }
     }
@@ -266,6 +290,7 @@ export class Game {
         };
         this.signalChange('all');
       } else {
+        this.electionTracker = 0;
         this.playExecutiveAction(null);
       }
     }
@@ -273,6 +298,14 @@ export class Game {
       this.electionTracker++;
       this.startElection();
     }
+  }
+
+  endExecutiveAction() {
+    if (this.state.type != 'executiveAction') {
+      throw new Error('Not in an executive action.');
+    }
+
+    this.startElection();
   }
 
   /* Listeners */
@@ -296,12 +329,143 @@ export class Game {
     return this.numFascistCards >= 5;
   }
 
-  getTableState() {
+  getPlayerState(playerId: string) {
+    const ind = this.getPlayer(playerId);
+    const player = this.players[ind];
+    let action: PlayerAction | undefined = undefined;
 
+    let title: PlayerTitle = player.isDead ? 'Dead' : '';
+
+    switch (this.state.type) {
+      case 'lobby':
+        action = {
+          type: 'lobby',
+          canStart: this.numPlayers >= 5
+        };
+        break;
+      case 'nightRound':
+        action = { type: 'nightRound' };
+        break;
+      case 'election':
+        if (this.state.presidentElect === ind) {
+          title = 'President Nominee';
+        }
+        if (this.state.chancellorElect === ind) {
+          title = 'Chancellor Nominee';
+        }
+        if (!this.state.chancellorElect) {
+          if (title == 'President Nominee') {
+            action = {
+              type: 'choosePlayer',
+              subtype: 'nominateChancellor',
+              players: this.getEligibleChancellors(ind)
+            };
+          }
+        } else {
+          if (this.state.votes[ind] === null) {
+            action = {
+              type: 'vote',
+              president: this.state.presidentElect,
+              chancellor: this.state.chancellorElect
+            };
+          }
+        }
+        break;
+      case 'legislativeSession':
+        if (this.state.president === ind) {
+          title = 'President';
+        }
+        if (this.state.chancellor === ind) {
+          title = 'Chancellor';
+        }
+        if (this.state.turn == title) {
+          action = {
+            type: 'legislative',
+            role: title,
+            cards: this.state.cards,
+            canVeto: this.state.turn == 'Chancellor' && this.state.canVeto
+          };
+        }
+        else if (this.state.turn == 'Veto') {
+          action = {
+            type: 'vetoConsent',
+            chancellor: this.state.chancellor
+          };
+        }
+        break;
+      case 'cardReveal':
+        if (this.lastPresident === ind) {
+          title = 'President';
+        }
+        if (this.lastChancellor === ind) {
+          title = 'Chancellor';
+        }
+        break;
+      case 'executiveAction':
+        if (this.lastPresident === ind) {
+          title = 'President';
+        }
+        if (this.lastChancellor === ind) {
+          title = 'Chancellor';
+        }
+        if (title == 'President') {
+          if (this.state.playerChosen) {
+            switch (this.state.action) {
+              case 'investigate':
+                action = {
+                  type: 'investigateParty',
+                  player: this.state.playerChosen,
+                  party: this.players[this.state.playerChosen].party
+                };
+                break;
+            }
+          } else {
+            switch (this.state.action) {
+              case 'execution':
+              case 'investigate':
+              case 'specialElection':
+                action = {
+                  type: 'choosePlayer',
+                  subtype: this.state.action,
+                  players: this.getEligiblePlayersForAction(ind, this.state.action)
+                };
+                break;
+              case 'policyPeak':
+                action = {
+                  type: 'policyPeak',
+                  cards: this.drawPile.slice(this.drawPile.length - 3)
+                };
+                break;
+            }
+          }
+        }
+        break;
+      case 'end':
+        action = {
+          type: 'gameover',
+          winner: this.state.winner,
+          winType: this.state.winType
+        };
+        break;
+    }
+
+    return {
+      id: player.id,
+      name: player.name,
+      role: player.role,
+      title,
+      action,
+      players: this.getPublicPlayers()
+    };
   }
 
-  getPlayerState(playerId: string) {
-
+  getPublicPlayers(): PublicPlayer[] {
+    return this.players.map(p => ({
+      id: p.id,
+      name: p.name,
+      isDead: p.isDead,
+      isConfirmedNotHitler: p.isConfirmedNotHitler
+    }));
   }
 
   /* Private methods */
@@ -336,11 +500,14 @@ export class Game {
   }
 
   private getNextPresident(advance: boolean = false) {
-    const president = this.nextPresidentElect;
-    if (advance) {
-      this.nextPresidentElect = (this.nextPresidentElect + 1) % this.numPlayers;
+    let i = (this.lastPresidentInTurn + 1) % this.numPlayers;
+    while (this.players[i].isDead) {
+      i = (this.lastPresidentInTurn + 1) % this.numPlayers;
     }
-    return president;
+    if (advance) {
+      this.lastPresidentInTurn = i;
+    }
+    return i;
   }
 
   private drawCards(n: number): Party[] {
@@ -351,14 +518,38 @@ export class Game {
     return cards;
   }
 
+  private getEligibleChancellors(president: number): number[] {
+    return this.players
+      .map((player, i) => {
+        if (i == president) return -1;
+        if (player.isDead) return -1;
+        if (this.lastChancellor == i) return -1;
+        if (this.numPlayers > 5 && this.lastPresident == i) return -1;
+        return i;
+      })
+      .filter(i => i != -1);
+  }
+
+  private getEligiblePlayersForAction(president: number, action: ExecutiveActionType): number[] {
+    return this.players
+      .map((player, i) => {
+        if (i == president) return -1;
+        if (player.isDead) return -1;
+        if (action == 'investigate' && player.hasBeenInvestigated) return -1;
+        return i;
+      })
+      .filter(i => i != -1);
+  }
+
   /* Private mutators */
 
   private startElection() {
     if (this.electionTracker == 3) {
       // Chaos
       const card = this.drawCards(1)[0];
+      this.lastPresident = -1;
+      this.lastChancellor = -1;
       this.playCard(card, true);
-      this.electionTracker = 0;
       return;
     }
     
