@@ -70,6 +70,7 @@ export class Game {
     };
     this.drawPile = getShuffledDeck();
     this.lastPresidentInTurn = Math.floor(Math.random() * this.numPlayers);
+    this.signalChange('all');
   }
 
   clickNext(playerId: string) {

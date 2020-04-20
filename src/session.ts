@@ -25,6 +25,7 @@ export function createGame(): string {
 export class PlayerSession {
   gameId: string;
   game: Game;
+  name: string;
   playerId: string;
   listeners: ((state: PlayerState) => any)[] = [];
   unsubscribe: () => any = () => {};
@@ -43,8 +44,10 @@ export class PlayerSession {
         throw new Error('Invalid player ID.');
       }
       this.playerId = playerId;
+      this.name = game.getPlayerState(playerId).name;
     } else {
       this.playerId = this.game.addPlayer(name);
+      this.name = name;
     }
     // Subscribe to events
     this.unsubscribe = this.game.attachListener(() => {
@@ -64,8 +67,12 @@ export class PlayerSession {
     }
     switch (state.action?.type) {
       case 'lobby':
-        if (state.action.canStart && data === 'start') {
-          this.game.startGame();
+        if (data === 'start') {
+          if (state.action.canStart) {
+            this.game.startGame();
+          } else {
+            throw new Error('Not enough players to start.');
+          }
         } else {
           throw new Error('Unexpected data.');
         }

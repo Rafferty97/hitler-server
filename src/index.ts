@@ -29,10 +29,14 @@ wss.on('connection', ws => {
         case 'board_join':
           board?.close();
           board = new BoardSession(msg.gameId);
+          ws.send(JSON.stringify({
+            type: 'game_joined',
+            gameId: board.gameId
+          }));
           board.onChange(state => {
             ws.send(JSON.stringify({
               type: 'update',
-              state: JSON.stringify(state)
+              state
             }));
           });
           break;
@@ -47,10 +51,16 @@ wss.on('connection', ws => {
         case 'player_join':
           session?.close();
           session = new PlayerSession(msg.gameId, msg.name, msg.playerId);
+          ws.send(JSON.stringify({
+            type: 'game_joined',
+            name: msg.name,
+            gameId: session.gameId,
+            playerId: session.playerId
+          }));
           session.onChange(state => {
             ws.send(JSON.stringify({
               type: 'update',
-              state: JSON.stringify(state)
+              state
             }));
           });
           break;
