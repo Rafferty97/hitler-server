@@ -2,7 +2,7 @@ import { nanoid } from "nanoid";
 import {
   Party, PlayerRole, GameState, ExecutiveActionType,
   PlayerState, PlayerAction, PublicPlayer, PlayerTitle
-} from "./state";
+} from "./types";
 import { getShuffledDeck, getFascistTile } from "./util";
 
 const MAX_LIBERAL_TILES = 5;
@@ -128,7 +128,22 @@ export class Game {
       throw new Error('Dead players can\'t vote.');
     }
 
+    // Record the vote
     this.state.votes[player] = vote;
+    
+    // Compute the voting result, if voting is finished
+    let y = 0, n = 0, c = true;
+    for (let i = 0; i < this.players.length; i++) {
+      const vote = this.state.votes[i];
+      if (vote === true) y++;
+      if (vote === false) n++;
+      if (vote === null && !this.players[i].isDead) {
+        c = false;
+      }
+    }
+    this.state.voteResult = c ? y > n : null;
+
+    // Signal change
     this.signalChange(player);
   }
 
@@ -139,18 +154,11 @@ export class Game {
     if (!this.state.chancellorElect) {
       throw new Error('Chancellor has not been nominated.');
     }
-    
-    let y = 0, n = 0;
-    for (let i = 0; i < this.players.length; i++) {
-      const vote = this.state.votes[i];
-      if (vote === true) y++;
-      if (vote === false) n++;
-      if (vote === null && !this.players[i].isDead) {
-        throw new Error('Not all votes are cast.');
-      }
+    if (this.state.voteResult == null) {
+      throw new Error('Not all votes are cast.');
     }
 
-    if (y > n) {
+    if (this.state.voteResult) {
       // Vote passed
       if (this.checkHitlerWin(this.state.chancellorElect)) {
         return;
@@ -183,7 +191,7 @@ export class Game {
         if (this.state.president != player) {
           throw new Error('It is the president\'s turn to discard a policy.');
         }
-        this.state.cards.splice(card);
+        this.state.cards.splice(card, 1);
         this.state.turn = 'Chancellor';
         this.signalChange([this.state.president, this.state.chancellor]);
         break;
@@ -193,7 +201,7 @@ export class Game {
         }
         this.lastPresident = this.state.president;
         this.lastChancellor = this.state.chancellor;
-        this.state.cards.splice(card);
+        this.state.cards.splice(card, 1);
         this.state = {
           type: 'cardReveal',
           card: this.state.cards[0],
@@ -270,6 +278,7 @@ export class Game {
     }
 
     if (this.state.card == 'Fascist') {
+      this.numFascistCards++;
       if (this.numFascistCards == MAX_FASCIST_TILES) {
         this.state = {
           type: 'end',
@@ -284,6 +293,7 @@ export class Game {
       }
     }
     else if (this.state.card == 'Liberal') {
+      this.numLiberalCards++;
       if (this.numLiberalCards == MAX_LIBERAL_TILES) {
         this.state = {
           type: 'end',
@@ -569,7 +579,8 @@ export class Game {
       presidentElect: this.getNextPresident(true),
       chancellorElect: undefined,
       isSpecial: false,
-      votes: this.players.map(_ => null)
+      votes: this.players.map(_ => null),
+      voteResult: null
     };
     this.signalChange('all');
   }

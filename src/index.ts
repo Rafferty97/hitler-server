@@ -3,7 +3,7 @@ import * as WebSocket from "ws";
 import { Game } from "./game";
 import { nanoid } from "nanoid";
 import { createGame, PlayerSession, BoardSession } from "./session";
-import { PlayerState } from "./state";
+import { PlayerState } from "./types";
 
 const port = parseInt(process.env.PORT || '8888');
 const wss = new WebSocket.Server({ port });

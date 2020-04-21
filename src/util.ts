@@ -1,4 +1,4 @@
-import { Party, ExecutiveActionType } from "./state";
+import { Party, ExecutiveActionType } from "./types";
 
 export function getShuffledDeck(): Party[] {
   let numLiberals = 6;

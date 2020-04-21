@@ -27,6 +27,7 @@ interface Election {
   presidentElect: number;
   chancellorElect?: number;
   votes: (boolean | null)[];
+  voteResult: boolean | null;
   isSpecial: boolean;
 }
 

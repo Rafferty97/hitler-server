@@ -1,5 +1,6 @@
 import { Game } from "./game";
-import { PlayerState } from "./state";
+import { PlayerState } from "./types";
+import { testGame } from './test';
 
 const games: Map<string, Game> = new Map();
 games.set('', new Game());
@@ -153,8 +154,22 @@ export class BoardSession {
   game: Game;
   listeners: ((state: Game) => any)[] = [];
   unsubscribe: () => any = () => {};
+  test: any;
 
   constructor(gameId: string) {
+    if (gameId == 'AAAA') {
+      // Create game
+      this.gameId = 'AAAA';
+      this.game = new Game();
+      this.unsubscribe = this.game.attachListener(() => {
+        this.listeners.forEach(listener => listener(this.game));
+      }, 'board');
+
+      // Run game
+      testGame(this.game);
+      return;
+    }
+
     // Find game
     this.gameId = gameId;
     const game = games.get(gameId);
@@ -172,8 +187,6 @@ export class BoardSession {
     this.listeners.push(listener);
     listener(this.game);
   }
-
-  // doAction() ??
 
   close() {
     this.unsubscribe();
