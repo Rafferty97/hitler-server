@@ -7,6 +7,9 @@ import { getShuffledDeck, getFascistTile } from "./util";
 
 const MAX_LIBERAL_TILES = 5;
 const MAX_FASCIST_TILES = 6;
+const NUM_FASCISTS = new Map<number, number>([
+  [5, 1], [6, 1], [7, 2], [8, 2], [9, 3], [10, 3]
+]);
 
 /* Player */
 
@@ -70,6 +73,15 @@ export class Game {
     };
     this.drawPile = getShuffledDeck();
     this.lastPresidentInTurn = Math.floor(Math.random() * this.numPlayers);
+    this.players.forEach(player => player.role = 'Liberal');
+    this.getRandomPlayer().role = 'Hitler';
+    for (let i = 0; i < (NUM_FASCISTS.get(this.numPlayers) ?? 0);) {
+      const player = this.getRandomPlayer();
+      if (player.role == 'Liberal') {
+        player.role = 'Fascist';
+        i++;
+      }
+    }
     this.signalChange('all');
   }
 
@@ -101,6 +113,9 @@ export class Game {
         if (this.state.chancellorElect) {
           throw new Error('Chancellor has already been nominated.');
         }
+        if (this.getEligibleChancellors(this.state.presidentElect).indexOf(otherPlayer) == -1) {
+          throw new Error('This player cannot be chancellor.');
+        }
         this.state.chancellorElect = otherPlayer;
         this.signalChange('all');
         break;
@@ -111,8 +126,11 @@ export class Game {
         if (this.state.playerChosen) {
           throw new Error('Player already chosen.');
         }
+        if (this.players[otherPlayer].isDead) {
+          throw new Error('Can\'t choose a dead player.');
+        }
         this.state.playerChosen = otherPlayer;
-        this.signalChange(player);
+        this.signalChange([player, otherPlayer]);
         break;
     }
   }
@@ -272,7 +290,8 @@ export class Game {
       throw new Error('Not in a card reveal.');
     }
 
-    if (this.state.chaos) {
+    const chaos = this.state.chaos;
+    if (chaos) {
       this.lastPresident = -1;
       this.lastChancellor = -1;
     }
@@ -287,8 +306,7 @@ export class Game {
         };
         this.signalChange('all');
       } else {
-        const tile = getFascistTile(this.numPlayers, this.numFascistCards - 1);
-        this.electionTracker = 0;
+        const tile = chaos ? null : getFascistTile(this.numPlayers, this.numFascistCards - 1);
         this.playExecutiveAction(tile);
       }
     }
@@ -302,7 +320,6 @@ export class Game {
         };
         this.signalChange('all');
       } else {
-        this.electionTracker = 0;
         this.playExecutiveAction(null);
       }
     }
@@ -316,8 +333,25 @@ export class Game {
     if (this.state.type != 'executiveAction') {
       throw new Error('Not in an executive action.');
     }
-
-    this.startElection();
+    
+    switch (this.state.action) {
+      case 'execution':
+        if (this.state.playerChosen == null) {
+          throw new Error('Player has not been chosen.');
+        }
+        this.players[this.state.playerChosen].isDead = true;
+        this.startElection();
+        break;
+      case 'specialElection':
+        if (this.state.playerChosen == null) {
+          throw new Error('Player has not been chosen.');
+        }
+        this.startElection(this.state.playerChosen);
+        break;
+      default:
+        this.startElection();
+        break;
+    }
   }
 
   /* Listeners */
@@ -523,7 +557,7 @@ export class Game {
   private getNextPresident(advance: boolean = false) {
     let i = (this.lastPresidentInTurn + 1) % this.numPlayers;
     while (this.players[i].isDead) {
-      i = (this.lastPresidentInTurn + 1) % this.numPlayers;
+      i = (i + 1) % this.numPlayers;
     }
     if (advance) {
       this.lastPresidentInTurn = i;
@@ -564,7 +598,7 @@ export class Game {
 
   /* Private mutators */
 
-  private startElection() {
+  private startElection(president?: number) {
     if (this.electionTracker == 3) {
       // Chaos
       const card = this.drawCards(1)[0];
@@ -576,9 +610,9 @@ export class Game {
     
     this.state = {
       type: 'election',
-      presidentElect: this.getNextPresident(true),
+      presidentElect: president ?? this.getNextPresident(true),
       chancellorElect: undefined,
-      isSpecial: false,
+      isSpecial: president != undefined,
       votes: this.players.map(_ => null),
       voteResult: null
     };
@@ -605,11 +639,7 @@ export class Game {
       chaos,
       card
     };
-    if (card == 'Fascist') {
-      this.numFascistCards++;
-    } else {
-      this.numLiberalCards++;
-    }
+    this.electionTracker = 0;
     this.signalChange('board');
   }
 
@@ -624,6 +654,10 @@ export class Game {
     } else {
       this.startElection();
     }
+  }
+
+  private getRandomPlayer(): Player {
+    return this.players[Math.floor(Math.random() * this.numPlayers)];
   }
 }
 
