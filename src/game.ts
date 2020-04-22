@@ -179,6 +179,7 @@ export class Game {
     if (this.state.voteResult) {
       // Vote passed
       if (this.checkHitlerWin(this.state.chancellorElect)) {
+        this.signalChange('all');
         return;
       }
       this.state = {
@@ -628,6 +629,8 @@ export class Game {
           winType: 'hitler'
         };
         return true;
+      } else {
+        this.players[chancellor].isConfirmedNotHitler = true;
       }
     }
     return false;

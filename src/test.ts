@@ -11,6 +11,7 @@ export async function testGame(game: Game) {
   const players = [p1, p2, p3, p4, p5];
   game.startGame();
   game.players.forEach(p => p.role = 'Liberal');
+  //game.players[2].role = 'Hitler';
   game.numLiberalCards = 4;
   game.numFascistCards = 5;
   game.drawPile = ['Liberal', 'Fascist', 'Fascist', 'Fascist', 'Liberal', 'Fascist'];
@@ -18,9 +19,6 @@ export async function testGame(game: Game) {
   players.forEach(p => game.clickNext(p));
   game.choosePlayer(p1, p3);
   players.forEach((p, i) => game.vote(p, i % 2 == 0));
-  game.completeVoting();
-  game.discardPolicy(p1, 0);
-  game.discardPolicy(p3, 1);
   await delay(4000);
-  game.endCardReveal();
+  game.completeVoting();
 }
