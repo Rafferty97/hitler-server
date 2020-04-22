@@ -41,11 +41,9 @@ wss.on('connection', ws => {
           });
           break;
         
-        case 'board_ping':
-          // todo
+        case 'board_next':
+          board?.next();
           break;
-        
-        // case 'board_action' ??
 
         // Players
         case 'player_join':
@@ -71,10 +69,6 @@ wss.on('connection', ws => {
           } else {
             throw new Error('Not in a game.');
           }
-          break;
-        
-        case 'player_ping':
-          // todo
           break;
       }
     }

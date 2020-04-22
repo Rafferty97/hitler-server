@@ -123,7 +123,7 @@ export class Game {
         if (this.state.action == 'policyPeak') {
           throw new Error('This executive action doesn\'t involve another player.');
         }
-        if (this.state.playerChosen) {
+        if (this.state.playerChosen != null) {
           throw new Error('Player already chosen.');
         }
         if (this.players[otherPlayer].isDead) {
@@ -138,7 +138,7 @@ export class Game {
   vote(playerId: string, vote: boolean) {
     const player = this.getPlayer(playerId);
 
-    if (this.state.type != 'election' || !this.state.chancellorElect) {
+    if (this.state.type != 'election' || this.state.chancellorElect == null) {
       throw new Error('Not currently voting.');
     }
 
@@ -165,11 +165,11 @@ export class Game {
     this.signalChange(player);
   }
 
-  completeVoting() {
+  endVoting() {
     if (this.state.type != 'election') {
       throw new Error('Not voting.');
     } 
-    if (!this.state.chancellorElect) {
+    if (this.state.chancellorElect == null) {
       throw new Error('Chancellor has not been nominated.');
     }
     if (this.state.voteResult == null) {
@@ -221,12 +221,7 @@ export class Game {
         this.lastPresident = this.state.president;
         this.lastChancellor = this.state.chancellor;
         this.state.cards.splice(card, 1);
-        this.state = {
-          type: 'cardReveal',
-          card: this.state.cards[0],
-          chaos: false
-        };
-        this.signalChange(this.lastChancellor);
+        this.playCard(this.state.cards[0]);
         break;
       case 'Veto':
         throw new Error('Chancellor has called for a veto.');
@@ -264,6 +259,7 @@ export class Game {
           card: 'Veto',
           chaos: false
         };
+        this.signalChange([this.lastPresident, this.lastChancellor]);
         break;
     }
   }
@@ -325,6 +321,7 @@ export class Game {
       }
     }
     else {
+      // Agenda was vetoed
       this.electionTracker++;
       this.startElection();
     }
@@ -340,8 +337,19 @@ export class Game {
         if (this.state.playerChosen == null) {
           throw new Error('Player has not been chosen.');
         }
-        this.players[this.state.playerChosen].isDead = true;
-        this.startElection();
+        const player = this.players[this.state.playerChosen];
+        player.isDead = true;
+        if (player.role == 'Hitler') {
+          this.state = {
+            type: 'end',
+            winner: 'Liberal',
+            winType: 'hitler'
+          };
+          this.signalChange('all');
+        } else {
+          player.isConfirmedNotHitler = true;
+          this.startElection();
+        }
         break;
       case 'specialElection':
         if (this.state.playerChosen == null) {
@@ -400,7 +408,9 @@ export class Game {
         };
         break;
       case 'nightRound':
-        action = { type: 'nightRound' };
+        if (this.state.confirmations[ind] !== true) {
+          action = { type: 'nightRound' };
+        }
         break;
       case 'election':
         if (this.state.presidentElect === ind) {
@@ -409,7 +419,7 @@ export class Game {
         if (this.state.chancellorElect === ind) {
           title = 'Chancellor Nominee';
         }
-        if (!this.state.chancellorElect) {
+        if (this.state.chancellorElect == null) {
           if (title == 'President Nominee') {
             action = {
               type: 'choosePlayer',
@@ -418,7 +428,7 @@ export class Game {
             };
           }
         } else {
-          if (this.state.votes[ind] === null) {
+          if (this.state.votes[ind] === null && !player.isDead) {
             action = {
               type: 'vote',
               president: this.state.presidentElect,
@@ -442,7 +452,7 @@ export class Game {
             canVeto: this.state.turn == 'Chancellor' && this.state.canVeto
           };
         }
-        else if (this.state.turn == 'Veto') {
+        else if (this.state.turn == 'Veto' && title == 'President') {
           action = {
             type: 'vetoConsent',
             chancellor: this.state.chancellor
@@ -465,7 +475,7 @@ export class Game {
           title = 'Chancellor';
         }
         if (title == 'President') {
-          if (this.state.playerChosen) {
+          if (this.state.playerChosen != null) {
             switch (this.state.action) {
               case 'investigate':
                 action = {
@@ -511,7 +521,8 @@ export class Game {
       role: player.role,
       title,
       action,
-      players: this.getPublicPlayers()
+      players: this.getPublicPlayers(),
+      isDead: player.isDead
     };
   }
 
@@ -643,7 +654,7 @@ export class Game {
       card
     };
     this.electionTracker = 0;
-    this.signalChange('board');
+    this.signalChange('all');
   }
 
   private playExecutiveAction(tile: ExecutiveActionType | null) {

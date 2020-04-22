@@ -3,7 +3,22 @@ import { PlayerState } from "./types";
 import { testGame } from './test';
 
 const games: Map<string, Game> = new Map();
-games.set('', new Game());
+
+function init() {
+  const game = new Game();
+  game.addPlayer('ALEX');
+  game.addPlayer('BOB');
+  game.addPlayer('CHARLIE');
+  game.addPlayer('DAVID');
+  game.addPlayer('EDDIE');
+  game.players.forEach((p, i) => p.id = 'p' + (i + 1));
+  game.startGame();
+  game.players.forEach(p => game.clickNext(p.id));
+  game.numLiberalCards = 4;
+  game.numFascistCards = 4;
+  games.set('ABCD', game);
+}
+init();
 
 function createGameID(): string {
   let id = '';
@@ -86,11 +101,7 @@ export class PlayerSession {
         }
         break;
       case 'choosePlayer':
-        if (state.action.players.indexOf(data) != -1) {
-          this.game.choosePlayer(this.playerId, data);
-        } else {
-          throw new Error('Invalid player chosen.');
-        }
+        this.game.choosePlayer(this.playerId, data);
         break;
       case 'vote':
         if (typeof data === 'boolean') {
@@ -169,7 +180,6 @@ export class BoardSession {
       testGame(this.game);
       return;
     }
-
     // Find game
     this.gameId = gameId;
     const game = games.get(gameId);
@@ -186,6 +196,20 @@ export class BoardSession {
   onChange(listener: (state: Game) => any) {
     this.listeners.push(listener);
     listener(this.game);
+  }
+  
+  next() {
+    switch (this.game.state.type) {
+      case 'cardReveal':
+        this.game.endCardReveal();
+        break;
+      case 'election':
+        this.game.endVoting();
+        break;
+      case 'executiveAction':
+        this.game.endExecutiveAction();
+        break;
+    }
   }
 
   close() {

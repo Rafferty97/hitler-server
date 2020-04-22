@@ -9,8 +9,10 @@ export async function testGame(game: Game) {
   const p4 = game.addPlayer('DAVID');
   const p5 = game.addPlayer('EDDIE');
   const players = [p1, p2, p3, p4, p5];
+  game.players.forEach((p, i) => p.id = 'p' + (i + 1));
   game.startGame();
-  game.players.forEach(p => p.role = 'Liberal');
+
+  /* game.players.forEach(p => p.role = 'Liberal');
   //game.players[2].role = 'Hitler';
   game.numLiberalCards = 4;
   game.numFascistCards = 5;
@@ -20,5 +22,5 @@ export async function testGame(game: Game) {
   game.choosePlayer(p1, p3);
   players.forEach((p, i) => game.vote(p, i % 2 == 0));
   await delay(4000);
-  game.completeVoting();
+  game.completeVoting(); */
 }
