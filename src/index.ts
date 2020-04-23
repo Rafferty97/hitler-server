@@ -8,7 +8,7 @@ const port = parseInt(process.env.PORT || '8888');
 if (process.env.NODE_ENV == 'prod') {
   const server = https.createServer({
     cert: fs.readFileSync('/etc/letsencrypt/live/alexanderrafferty.com/fullchain.pem'),
-    key: fs.readFileSync('/etc/letsencrypt/live/alexanderrafferty.com/privkey.pem'),,
+    key: fs.readFileSync('/etc/letsencrypt/live/alexanderrafferty.com/privkey.pem')
   });
   wss = new WebSocket.Server({ server });
   server.listen(port);
