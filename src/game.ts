@@ -384,6 +384,10 @@ export class Game {
   get numPlayers() {
     return this.players.length;
   }
+  
+  get numPlayersAlive() {
+    return this.players.filter(p => !p.isDead).length;
+  }
 
   get vetoPowerUnlocked() {
     return this.numFascistCards >= 5;
@@ -591,7 +595,7 @@ export class Game {
         if (i == president) return -1;
         if (player.isDead) return -1;
         if (this.lastChancellor == i) return -1;
-        if (this.numPlayers > 5 && this.lastPresident == i) return -1;
+        if (this.numPlayersAlive > 5 && this.lastPresident == i) return -1;
         return i;
       })
       .filter(i => i != -1);

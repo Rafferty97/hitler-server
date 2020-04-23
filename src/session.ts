@@ -14,8 +14,8 @@ function init() {
   game.players.forEach((p, i) => p.id = 'p' + (i + 1));
   game.startGame();
   game.players.forEach(p => game.clickNext(p.id));
-  game.numLiberalCards = 4;
-  game.numFascistCards = 4;
+  game.numLiberalCards = 3;
+  game.numFascistCards = 3;
   games.set('ABCD', game);
 }
 init();
