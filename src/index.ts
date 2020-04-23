@@ -1,12 +1,20 @@
-import * as express from "express";
 import * as WebSocket from "ws";
-import { Game } from "./game";
-import { nanoid } from "nanoid";
 import { createGame, PlayerSession, BoardSession } from "./session";
-import { PlayerState } from "./types";
+import * as https from "https";
+import * as fs from "fs";
 
-const port = parseInt(process.env.PORT || '8888');
-const wss = new WebSocket.Server({ port });
+let wss: WebSocket.Server;
+
+if (process.env.NODE_ENV == 'prod') {
+  const server = https.createServer({
+    cert: fs.readFileSync('/etc/letsencrypt/live/alexanderrafferty.com/fullchain.pem'),
+    key: fs.readFileSync('/etc/letsencrypt/live/alexanderrafferty.com/privkey.pem')
+  });
+  wss = new WebSocket.Server({ server });
+} else {
+  const port = parseInt(process.env.PORT || '8888');
+  wss = new WebSocket.Server({ port });
+}
 
 wss.on('connection', ws => {
   let board: BoardSession | null = null;
