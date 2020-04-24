@@ -415,7 +415,12 @@ export class Game {
         break;
       case 'nightRound':
         if (this.state.confirmations[ind] !== true) {
-          action = { type: 'nightRound' };
+          action = {
+            type: 'nightRound',
+            roles: player.role == 'Fascist' || (this.numPlayers < 7 && player.role == 'Hitler')
+              ? this.players.map(player => player.role ?? 'Liberal')
+              : undefined
+          };
         }
         break;
       case 'election':

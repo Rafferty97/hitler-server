@@ -99,6 +99,7 @@ interface LobbyAction {
 
 interface NightRoundAction {
   type: 'nightRound';
+  roles?: PlayerRole[];
 }
 
 interface ChoosePlayerAction {
