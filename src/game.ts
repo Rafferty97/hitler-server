@@ -215,6 +215,7 @@ export class Game {
         this.signalChange([this.state.president, this.state.chancellor]);
         break;
       case 'Chancellor':
+      case 'ChancellorAgain':
         if (this.state.chancellor != player) {
           throw new Error('It is the chancellor\'s turn to discard a policy.');
         }
@@ -242,6 +243,7 @@ export class Game {
       case 'President':
         throw new Error('The president cannot initiate a veto.');
       case 'Chancellor':
+      case 'ChancellorAgain':
         if (this.state.chancellor != player) {
           throw new Error('It is the chancellor\'s turn to discard a policy.');
         }

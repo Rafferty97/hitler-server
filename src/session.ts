@@ -12,10 +12,11 @@ function init() {
   game.addPlayer('DAVID');
   game.addPlayer('EDDIE');
   game.players.forEach((p, i) => p.id = 'p' + (i + 1));
-  game.startGame();
+  /*game.startGame();
+  game.lastPresidentInTurn = -1;
   game.players.forEach(p => game.clickNext(p.id));
-  game.numLiberalCards = 3;
-  game.numFascistCards = 3;
+  game.numLiberalCards = 2;
+  game.numFascistCards = 2;*/
   games.set('ABCD', game);
 }
 init();
