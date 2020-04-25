@@ -60,6 +60,10 @@ export class PlayerSession {
       throw new Error('Game does not exist.');
     }
     this.game = game;
+    // Look for player with name
+    if (!playerId) {
+      playerId = this.game.getPlayerWithName(name);
+    }
     // Add to game
     if (playerId) {
       if (!this.game.hasPlayerWithID(playerId)) {

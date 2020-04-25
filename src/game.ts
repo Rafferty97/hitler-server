@@ -445,6 +445,10 @@ export class Game {
     return this.players.find(player => player.id == playerId) != undefined;
   }
 
+  getPlayerWithName(name: string): string | undefined {
+    return this.players.find(player => player.name == name)?.name;
+  }
+
   getPlayerState(playerId: string): PlayerState {
     const ind = this.getPlayer(playerId);
     const player = this.players[ind];
