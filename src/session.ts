@@ -16,14 +16,13 @@ function init() {
   game.lastPresidentInTurn = -1;
   game.players.forEach(p => game.clickNext(p.id));
   game.numLiberalCards = 2;
-  game.numFascistCards = 5;
+  game.numFascistCards = 2;
   game.electionTracker = 2;
   game.choosePlayer('p1', 'p2');
-  games.set('ABCD', game);
-
   setTimeout(() => {
-    //game.players.forEach(player => game.vote(player.id, false));
-  }, 9000);
+    game.players.forEach(player => game.vote(player.id, false));
+  }, 9000)
+  games.set('ABCD', game);
 }
 init();
 
