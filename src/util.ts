@@ -1,8 +1,8 @@
 import { Party, ExecutiveActionType } from "./types";
 
-export function getShuffledDeck(): Party[] {
-  let numLiberals = 6;
-  let numFascists = 11;
+export function getShuffledDeck(libCards: number = 0, fasCards: number = 0): Party[] {
+  let numLiberals = 6 - libCards;
+  let numFascists = 11 - fasCards;
   let deck: Party[] = [];
 
   while (numLiberals + numFascists > 0) {

@@ -3,6 +3,7 @@ import { PlayerState } from "./types";
 import { testGame } from './test';
 
 const games: Map<string, Game> = new Map();
+games.set('', new Game());
 
 function init() {
   const game = new Game();
@@ -14,14 +15,11 @@ function init() {
   game.players.forEach((p, i) => p.id = 'p' + (i + 1));
   game.startGame();
   game.lastPresidentInTurn = -1;
+  game.drawPile = game.drawPile.slice(0, 4);
   game.players.forEach(p => game.clickNext(p.id));
-  game.numLiberalCards = 2;
-  game.numFascistCards = 2;
   game.electionTracker = 2;
-  game.choosePlayer('p1', 'p2');
-  setTimeout(() => {
-    game.players.forEach(player => game.vote(player.id, false));
-  }, 9000)
+  game.numFascistCards = 3;
+
   games.set('ABCD', game);
 }
 init();
@@ -174,6 +172,10 @@ export class PlayerSession {
       case 'gameover':
         if (data === 'restart') {
           this.game.startGame();
+        }
+        else if (data === 'end') {
+          this.game.terminate();
+          games.delete(this.gameId);
         }
         break;
       default:

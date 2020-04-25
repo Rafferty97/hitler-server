@@ -54,8 +54,14 @@ export class Game {
   /* Mutating methods */
 
   addPlayer(name: string) {
+    if (this.state.type != 'lobby') {
+      throw new Error('Cannot join a game in progress.');
+    }
     if (this.numPlayers == 10) {
       throw new Error('Cannot have more than 10 players in game.');
+    }
+    if (this.players.findIndex(p => p.name == name) != -1) {
+      throw new Error('Player name must be unique.');
     }
     const player = new Player(nanoid(), name);
     this.players.push(player);
@@ -343,6 +349,7 @@ export class Game {
 
     if (this.state.card == 'Fascist') {
       this.numFascistCards++;
+      this.shuffleDeckIfLow();
       if (this.numFascistCards == MAX_FASCIST_TILES) {
         this.state = {
           type: 'end',
@@ -357,6 +364,7 @@ export class Game {
     }
     else if (this.state.card == 'Liberal') {
       this.numLiberalCards++;
+      this.shuffleDeckIfLow();
       if (this.numLiberalCards == MAX_LIBERAL_TILES) {
         this.state = {
           type: 'end',
@@ -411,6 +419,10 @@ export class Game {
     }
   }
 
+  terminate() {
+    // todo
+  }
+
   /* Listeners */
 
   listeners: Map<number, GameListener> = new Map();
@@ -446,7 +458,7 @@ export class Game {
   }
 
   getPlayerWithName(name: string): string | undefined {
-    return this.players.find(player => player.name == name)?.name;
+    return this.players.find(player => player.name == name)?.id;
   }
 
   getPlayerState(playerId: string): PlayerState {
@@ -650,10 +662,13 @@ export class Game {
 
   private drawCards(n: number): Party[] {
     const cards = this.drawPile.splice(this.drawPile.length - n);
-    if (this.drawPile.length < 3) {
-      this.drawPile = getShuffledDeck();
-    }
     return cards;
+  }
+
+  private shuffleDeckIfLow() {
+    if (this.drawPile.length < 3) {
+      this.drawPile = getShuffledDeck(this.numLiberalCards, this.numFascistCards);
+    }
   }
 
   private getEligibleChancellors(president: number): number[] {
