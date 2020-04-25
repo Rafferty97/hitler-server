@@ -12,12 +12,18 @@ function init() {
   game.addPlayer('DAVID');
   game.addPlayer('EDDIE');
   game.players.forEach((p, i) => p.id = 'p' + (i + 1));
-  /*game.startGame();
+  game.startGame();
   game.lastPresidentInTurn = -1;
   game.players.forEach(p => game.clickNext(p.id));
   game.numLiberalCards = 2;
-  game.numFascistCards = 2;*/
+  game.numFascistCards = 5;
+  game.electionTracker = 2;
+  game.choosePlayer('p1', 'p2');
   games.set('ABCD', game);
+
+  setTimeout(() => {
+    //game.players.forEach(player => game.vote(player.id, false));
+  }, 9000);
 }
 init();
 
@@ -75,6 +81,10 @@ export class PlayerSession {
   onChange(listener: (state: PlayerState) => any) {
     this.listeners.push(listener);
     listener(this.game.getPlayerState(this.playerId));
+  }
+
+  getState() {
+    this.listeners.forEach(listener => listener(this.game.getPlayerState(this.playerId)));
   }
 
   doAction(action: string, data: any) {
@@ -151,6 +161,18 @@ export class PlayerSession {
           throw new Error('Unexpected data.');
         }
         break;
+      case 'nextRound':
+        if (data === 'next') {
+          this.game.clickNext(this.playerId);
+        } else {
+          throw new Error('Invalid action.');
+        }
+        break;
+      case 'gameover':
+        if (data === 'restart') {
+          this.game.startGame();
+        }
+        break;
       default:
         throw new Error('Unexpected action.');
     }
@@ -202,7 +224,7 @@ export class BoardSession {
   next() {
     switch (this.game.state.type) {
       case 'cardReveal':
-        this.game.endCardReveal();
+        this.game.boardNext();
         break;
       case 'election':
         this.game.endVoting();

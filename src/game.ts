@@ -67,12 +67,27 @@ export class Game {
     if (this.numPlayers < 5) {
       throw new Error('Need at least 5 players to start game.');
     }
+    // Reset players
+    this.players.forEach(player => {
+      player.isDead = false;
+      player.hasBeenInvestigated = false;
+      player.isConfirmedNotHitler = false;
+      player.role = undefined;
+    })
+    // Reset game state
     this.state = {
       type: 'nightRound',
       confirmations: this.players.map(_ => false)
     };
+    this.roundIndex = 0;
+    this.electionTracker = 0;
+    this.numLiberalCards = 0;
+    this.numFascistCards = 0;
     this.drawPile = getShuffledDeck();
+    this.lastPresident = -1;
+    this.lastChancellor = -1;
     this.lastPresidentInTurn = Math.floor(Math.random() * this.numPlayers);
+    // Randomly assign player roles
     this.players.forEach(player => player.role = 'Liberal');
     this.getRandomPlayer().role = 'Hitler';
     for (let i = 0; i < (NUM_FASCISTS.get(this.numPlayers) ?? 0);) {
@@ -82,6 +97,7 @@ export class Game {
         i++;
       }
     }
+    // Signal update
     this.signalChange('all');
   }
 
@@ -96,6 +112,34 @@ export class Game {
         } else {
           this.signalChange(player);
         }
+        break;
+      case 'cardReveal':
+        this.state.confirmations[player] = true;
+        if (this.state.confirmations.reduce((x, y) => x && y, true)) {
+          this.endCardReveal();
+        } else {
+          this.signalChange(player);
+        }
+        break;
+    }
+  }
+
+  boardNext() {
+    switch (this.state.type) {
+      case 'cardReveal':
+        this.state.boardReady = true;
+        // Skip confirmations if the game is over
+        if (this.state.type == 'cardReveal') {
+          if (this.state.card == 'Liberal' && this.numLiberalCards == MAX_LIBERAL_TILES - 1) {
+            this.endCardReveal();
+            return;
+          }
+          if (this.state.card == 'Fascist' && this.numFascistCards == MAX_FASCIST_TILES - 1) {
+            this.endCardReveal();
+            return;
+          }
+        }
+        this.signalChange('all');
         break;
     }
   }
@@ -259,7 +303,9 @@ export class Game {
         this.state = {
           type: 'cardReveal',
           card: 'Veto',
-          chaos: false
+          chaos: false,
+          boardReady: false,
+          confirmations: this.createConfirmations()
         };
         this.signalChange([this.lastPresident, this.lastChancellor]);
         break;
@@ -279,7 +325,7 @@ export class Game {
       throw new Error('Only the president can reject a veto.');
     }
 
-    this.state.turn = 'Chancellor';
+    this.state.turn = 'ChancellorAgain';
     this.state.canVeto = false;
     this.signalChange([this.state.president, this.state.chancellor]);
   }
@@ -455,7 +501,11 @@ export class Game {
         if (this.state.chancellor === ind) {
           title = 'Chancellor';
         }
-        if (this.state.turn == title) {
+        let turn = this.state.turn;
+        if (turn == 'ChancellorAgain') {
+          turn = 'Chancellor';
+        }
+        if (turn == title) {
           action = {
             type: 'legislative',
             role: title,
@@ -476,6 +526,12 @@ export class Game {
         }
         if (this.lastChancellor === ind) {
           title = 'Chancellor';
+        }
+        if (this.state.boardReady
+          && !player.isDead
+          && this.state.confirmations[ind] !== true)
+        {
+          action = { type: 'nextRound' };
         }
         break;
       case 'executiveAction':
@@ -619,6 +675,10 @@ export class Game {
       .filter(i => i != -1);
   }
 
+  private createConfirmations() {
+    return this.players.map(player => player.isDead);
+  }
+
   /* Private mutators */
 
   private startElection(president?: number) {
@@ -662,7 +722,9 @@ export class Game {
     this.state = {
       type: 'cardReveal',
       chaos,
-      card
+      card,
+      boardReady: false,
+      confirmations: this.createConfirmations()
     };
     this.electionTracker = 0;
     this.signalChange('all');

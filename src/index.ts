@@ -78,6 +78,10 @@ wss.on('connection', ws => {
             throw new Error('Not in a game.');
           }
           break;
+
+        case 'get_state':
+          session?.getState();
+          break;
       }
     }
     catch (err) {

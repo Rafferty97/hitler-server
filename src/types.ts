@@ -44,6 +44,8 @@ interface CardReveal {
   type: 'cardReveal';
   card: Party | 'Veto';
   chaos: boolean;
+  boardReady: boolean;
+  confirmations: boolean[];
 }
 
 export type ExecutiveActionType = 'investigate' | 'specialElection' | 'policyPeak' | 'execution';
@@ -90,6 +92,7 @@ export type PlayerAction
   | PolicyPeakAction
   | InvestigatePartyAction
   | VetoConsentAction
+  | NextRoundAction
   | GameOverAction;
 
 interface LobbyAction {
@@ -135,6 +138,10 @@ interface InvestigatePartyAction {
 interface VetoConsentAction {
   type: 'vetoConsent';
   chancellor: number;
+}
+
+interface NextRoundAction {
+  type: 'nextRound';
 }
 
 interface GameOverAction {
