@@ -12,21 +12,11 @@ function init() {
   game.addPlayer('CHARLIE');
   game.addPlayer('DAVID');
   game.addPlayer('EDDIE');
-  game.addPlayer('ALEX 2');
-  game.addPlayer('BOB 2');
   game.players.forEach((p, i) => p.id = 'p' + (i + 1));
-  game.startGame();
   game.lastPresidentInTurn = -1;
-  game.drawPile = game.drawPile.slice(0, 4);
+  game.startGame();
   game.players.forEach(p => game.clickNext(p.id));
-  game.electionTracker = 2;
-  game.numFascistCards = 1;
-  game.choosePlayer('p1', 'p2');
-  game.players.forEach(p => game.vote(p.id, true));
-  setTimeout(() => {
-    //
-  }, 5000);
-
+  game.choosePlayer('p1', 'p3');
   games.set('ABCD', game);
 }
 init();
