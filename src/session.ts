@@ -5,22 +5,6 @@ import { testGame } from './test';
 const games: Map<string, Game> = new Map();
 games.set('', new Game());
 
-function init() {
-  const game = new Game();
-  game.addPlayer('ALEX');
-  game.addPlayer('BOB');
-  game.addPlayer('CHARLIE');
-  game.addPlayer('DAVID');
-  game.addPlayer('EDDIE');
-  game.players.forEach((p, i) => p.id = 'p' + (i + 1));
-  game.lastPresidentInTurn = -1;
-  game.startGame();
-  game.players.forEach(p => game.clickNext(p.id));
-  game.choosePlayer('p1', 'p3');
-  games.set('ABCD', game);
-}
-init();
-
 function createGameID(): string {
   let id = '';
   while (games.has(id)) {
@@ -179,6 +163,55 @@ export class PlayerSession {
         throw new Error('Unexpected action.');
     }
   }
+  
+  doRandomAction() {
+    const state = this.game.getPlayerState(this.playerId);
+    if (state.action) {
+      switch (state.action?.type) {
+        case 'lobby':
+          if (state.action.canStart) {
+            this.game.startGame();
+          }
+          break;
+        case 'nightRound':
+          this.game.clickNext(this.playerId);
+          break;
+        case 'choosePlayer':
+          const i = Math.floor(Math.random() * state.action.players.length);
+          const id = state.players[state.action.players[i]].id;
+          this.game.choosePlayer(this.playerId, id);
+          break;
+        case 'vote':
+          this.game.vote(this.playerId, Math.random() < 0.7);
+          break;
+        case 'legislative':
+          if (state.action.canVeto && Math.random() < 0.5) {
+            this.game.vetoAgenda(this.playerId);
+          } else {
+            const idx = Math.floor(Math.random() * state.action.cards.length);
+            this.game.discardPolicy(this.playerId, idx);
+          }
+          break;
+        case 'vetoConsent':
+          if (Math.random() < 0.5) {
+            this.game.vetoAgenda(this.playerId);
+          } else {
+            this.game.rejectVeto(this.playerId);
+          }
+          break;
+        case 'policyPeak':
+        case 'investigateParty':
+          this.game.endExecutiveAction();
+          break;
+        case 'nextRound':
+          this.game.clickNext(this.playerId);
+          break;
+        case 'gameover':
+          this.game.startGame();
+          break;
+      }
+    }
+  }
 
   close() {
     this.unsubscribe();
@@ -223,8 +256,17 @@ export class BoardSession {
     listener(this.game);
   }
   
-  next() {
+  next(state: string) {
+    if (state !== this.game.state.type) {
+      // Old game state - ignore
+      return;
+    }
     switch (this.game.state.type) {
+      case 'legislativeSession':
+        if (this.game.state.turn == 'VetoApproved') {
+          this.game.boardNext();
+        }
+        break;
       case 'cardReveal':
         this.game.boardNext();
         break;
@@ -243,3 +285,46 @@ export class BoardSession {
     this.unsubscribe();
   }
 }
+
+function init() {
+  const game = new Game();
+  game.addPlayer('ALEX');
+  game.addPlayer('BOB');
+  game.addPlayer('CHARLIE');
+  game.addPlayer('DAVID');
+  game.addPlayer('EDDIE');
+  game.addPlayer('FIONA');
+  game.addPlayer('GEORGE');
+  game.addPlayer('HENRY');
+  game.addPlayer('IZZY');
+  game.addPlayer('JAKE');
+  game.players.forEach((p, i) => p.id = 'p' + (i + 1));
+  game.startGame();
+  games.set('ABCD', game);
+
+  const sessions = game.players.map(p => new PlayerSession('ABCD', p.name));
+  setInterval(() => {
+    sessions.forEach(session => session.doRandomAction());
+    /* switch (game.state.type) {
+      case 'cardReveal':
+        game.boardNext();
+        break;
+      case 'election':
+        if (game.state.voteResult != null) {
+          game.endVoting();
+        }
+        break;
+      case 'executiveAction':
+        switch (game.state.action) {
+          case 'execution':
+          case 'specialElection':
+            if (game.state.playerChosen != null) {
+              game.endExecutiveAction();
+            }
+            break;
+        }
+        break;
+    } */
+  }, 6000);
+}
+init();

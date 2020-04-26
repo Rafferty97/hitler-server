@@ -50,7 +50,7 @@ wss.on('connection', ws => {
           break;
         
         case 'board_next':
-          board?.next();
+          board?.next(msg.state);
           break;
 
         // Players

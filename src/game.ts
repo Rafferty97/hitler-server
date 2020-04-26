@@ -70,6 +70,7 @@ export class Game {
   }
 
   startGame() {
+    console.log('Starting game...');
     if (this.numPlayers < 5) {
       throw new Error('Need at least 5 players to start game.');
     }
@@ -132,6 +133,20 @@ export class Game {
 
   boardNext() {
     switch (this.state.type) {
+      case 'legislativeSession':
+        if (this.state.turn == 'VetoApproved') {
+          this.lastPresident = this.state.president;
+          this.lastChancellor = this.state.chancellor;
+          this.state = {
+            type: 'cardReveal',
+            card: 'Veto',
+            chaos: false,
+            boardReady: false,
+            confirmations: this.createConfirmations()
+          };
+          this.endCardReveal();
+        }
+        break;
       case 'cardReveal':
         this.state.boardReady = true;
         // Skip confirmations if the game is over
@@ -304,15 +319,7 @@ export class Game {
         if (this.state.president != player) {
           throw new Error('Only the president can conset to the veto.');
         }
-        this.lastPresident = this.state.president;
-        this.lastChancellor = this.state.chancellor;
-        this.state = {
-          type: 'cardReveal',
-          card: 'Veto',
-          chaos: false,
-          boardReady: false,
-          confirmations: this.createConfirmations()
-        };
+        this.state.turn = 'VetoApproved';
         this.signalChange([this.lastPresident, this.lastChancellor]);
         break;
     }
