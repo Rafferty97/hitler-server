@@ -327,4 +327,4 @@ function init() {
     } */
   }, 6000);
 }
-init();
+// init();
